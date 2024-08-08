@@ -217,6 +217,40 @@ func TestAccIPAM_tier(t *testing.T) {
 	})
 }
 
+func TestAccIPAM_enablePrivateGua(t *testing.T) {
+	ctx := acctest.Context(t)
+	var ipam awstypes.Ipam
+	resourceName := "aws_vpc_ipam.test"
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:                 func() { acctest.PreCheck(ctx, t) },
+		ErrorCheck:               acctest.ErrorCheck(t, names.EC2ServiceID),
+		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckIPAMDestroy(ctx),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccIPAMConfig_enablePrivateGua("true"),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckIPAMExists(ctx, resourceName, &ipam),
+					resource.TestCheckResourceAttr(resourceName, "enable_private_gua", true),
+				),
+			},
+			{
+				Config: testAccIPAMConfig_enablePrivateGua("false"),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckIPAMExists(ctx, resourceName, &ipam),
+					resource.TestCheckResourceAttr(resourceName, "enable_private_gua", false),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
 func TestAccIPAM_tags(t *testing.T) {
 	ctx := acctest.Context(t)
 	var ipam awstypes.Ipam
@@ -425,4 +459,17 @@ resource "aws_vpc_ipam" "test" {
   tier = "%s"
 }
 `, tier)
+}
+
+func testAccIPAMConfig_enablePrivateGua(enablePrivateGua string) string {
+	return fmt.Sprintf(`
+data "aws_region" "current" {}
+
+resource "aws_vpc_ipam" "test" {
+  operating_regions {
+    region_name = data.aws_region.current.name
+  }
+  enablePrivateGua = %s
+}
+`, enablePrivateGua)
 }
